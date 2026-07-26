@@ -19,6 +19,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from adapters.registry import all_adapters
 from api.routes import router
@@ -65,4 +66,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Reelz Stream Resolver", lifespan=lifespan)
+
+# CORS: required for the standalone HTML test harness (opened directly
+# as a local file:// page, or served from any dev origin) to call this
+# API from a browser at all — without this, every fetch() from that
+# page fails with an opaque CORS error before your code even runs.
+# Wide open (allow_origins=["*"]) is fine for a dev/test resolver like
+# this; if you later add real user-facing auth here, tighten this to
+# your actual app's specific origin(s) instead of "*".
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(router)
