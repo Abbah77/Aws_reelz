@@ -8,7 +8,18 @@
 # chromium` below auto-detects the host CPU architecture and pulls the
 # matching Chromium build — nothing here is hardcoded to one architecture.
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
+
+# PINNED TO BOOKWORM (Debian 12), NOT THE FLOATING `python:3.12-slim` TAG:
+# `python:3.12-slim` tracks whatever Debian release is current, which as
+# of this build had moved to Trixie (Debian 13). Playwright's
+# `--with-deps` installer does not yet officially support Trixie — it
+# falls back to an Ubuntu 20.04 package list that references package
+# names Trixie has renamed or dropped (e.g. `ttf-unifont` ->
+# `fonts-unifont`), and the install fails outright. Bookworm is a
+# version Playwright's dependency installer explicitly supports, so
+# pinning here avoids silently breaking again the next time Debian's
+# "stable" pointer moves forward.
 
 # Playwright + Chromium need these system libraries regardless of
 # architecture. --with-deps below handles most of this automatically,
