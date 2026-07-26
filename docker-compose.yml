@@ -1,0 +1,40 @@
+# Single-VM deployment: everything on one Oracle Always Free ARM
+# instance, as separate containers, for startup-scale traffic. No
+# separate VMs, no load balancer needed yet — see the conversation
+# this was built from for why splitting further is premature right now.
+#
+# Deploy: docker compose up -d
+# Logs:   docker compose logs -f resolver
+# Stop:   docker compose down
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reelz
+      POSTGRES_USER: reelz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set this in .env, do not hardcode}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"   # localhost-only — not exposed to the internet
+
+  resolver:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://reelz:${POSTGRES_PASSWORD:?set this in .env}@postgres:5432/reelz
+      RESOLVER_DEPLOYMENT: ec2
+    ports:
+      - "8000:8000"
+    # Chromium is memory-hungry under real use — cap it explicitly so a
+    # runaway resolve can't starve Postgres or the rest of the box.
+    # Adjust based on how much of your 24GB you're dedicating here if
+    # you later also run auth/shorts on this same VM.
+    mem_limit: 4g
+
+volumes:
+  pgdata:
