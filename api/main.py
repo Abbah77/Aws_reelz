@@ -1,6 +1,15 @@
 """
-FastAPI app entrypoint. Run directly (EC2 / local dev) via uvicorn, or
-wrap with Mangum for Lambda (see setup.md — Lambda deployment section).
+FastAPI app entrypoint. Runs directly via uvicorn — this is the ONLY
+deployment path now (Render, or any other long-running host). The
+earlier Lambda-specific handler files (api/lambda_handler.py,
+api/lambda_sweep_handler.py) and the mangum dependency have been
+removed — they're not needed here and would just be dead weight.
+
+RESOLVER_DEPLOYMENT env var still exists and still defaults to "ec2",
+kept as the generic name for "I am a long-running process, run the
+in-process background sweeper" — this is correct for Render's normal
+web service model too, not just literal EC2. No change needed to this
+env var for Render; the default already does the right thing.
 """
 from __future__ import annotations
 
@@ -40,21 +49,17 @@ async def lifespan(app: FastAPI):
     app.state.coalescer = coalescer
     app.state.adapters = all_adapters()
 
-    sweeper_task = None
-    # Only run the in-process sweeper loop on a long-running deployment
-    # (EC2). On Lambda, RESOLVER_DEPLOYMENT=lambda and expiry sweeping is
-    # driven by a separate EventBridge-scheduled invocation instead (see
-    # setup.md) — a Lambda handler that returns has no business starting
-    # an infinite background loop that will just get frozen/killed.
-    if os.environ.get("RESOLVER_DEPLOYMENT", "ec2") == "ec2":
-        sweeper_task = asyncio.create_task(sweep_forever(cache, interval_seconds=900))
-        logger.info("started in-process expiry sweeper (EC2 mode)")
+    # Render (and any long-running host) keeps this process alive
+    # indefinitely, so an in-process background sweeper loop is the
+    # right approach — no external scheduler needed, unlike the Lambda
+    # path this project no longer uses.
+    sweeper_task = asyncio.create_task(sweep_forever(cache, interval_seconds=900))
+    logger.info("started in-process expiry sweeper")
 
     logger.info("resolver ready with %d adapters", len(app.state.adapters))
     yield
 
-    if sweeper_task:
-        sweeper_task.cancel()
+    sweeper_task.cancel()
     await engine.stop()
     await cache.stop()
 
