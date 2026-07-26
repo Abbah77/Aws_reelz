@@ -1,11 +1,12 @@
-# Single-VM deployment: everything on one Oracle Always Free ARM
-# instance, as separate containers, for startup-scale traffic. No
-# separate VMs, no load balancer needed yet — see the conversation
-# this was built from for why splitting further is premature right now.
+# LOCAL DEVELOPMENT ONLY — this is not the production deployment path.
+# Production deployment is Render (see render.yaml + setup.md's Render
+# section). Use this file to run everything on your own machine while
+# developing/testing adapters before pushing to GitHub, so Render
+# doesn't become your only way to test a code change.
 #
-# Deploy: docker compose up -d
-# Logs:   docker compose logs -f resolver
-# Stop:   docker compose down
+# Run:   docker compose up -d
+# Logs:  docker compose logs -f resolver
+# Stop:  docker compose down
 
 services:
   postgres:

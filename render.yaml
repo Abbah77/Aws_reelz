@@ -1,0 +1,24 @@
+# Render Blueprint — deploy via Render Dashboard → New → Blueprint,
+# point it at your GitHub repo, Render reads this file and configures
+# the service automatically. You still set DATABASE_URL manually in
+# the dashboard after (see notes below) rather than committing it here,
+# since this file gets checked into git and secrets should never live
+# in a committed file.
+#
+# If you'd rather not use a Blueprint, you can ignore this file and set
+# up the service manually via Render's dashboard instead — same result,
+# see setup.md's Render section for the manual click-through steps.
+
+services:
+  - type: web
+    name: reelz-resolver
+    runtime: docker
+    plan: starter   # paid tier — required to stay warm; free tier sleeps after inactivity, which would reintroduce Chromium cold-starts
+    region: frankfurt   # closest Render region to most of the sources this resolver targets; change if you have a reason to
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: RESOLVER_DEPLOYMENT
+        value: ec2   # generic "long-running host" mode — correct for Render, see api/main.py's docstring
+      - key: DATABASE_URL
+        sync: false   # set manually in Render's dashboard (Environment tab) — never commit real secrets into this file
+    healthCheckPath: /health

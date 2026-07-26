@@ -1,17 +1,12 @@
-# ARM64-targeted image for Oracle Cloud's Always Free Ampere (ARM) VMs.
+# Docker image for the resolver — works on Render (or any container
+# host) as-is. Render's build/run infrastructure is standard x86_64, so
+# no architecture-specific changes are needed for that path.
 #
-# WHY THIS MATTERS: Oracle's Always Free compute is ARM (Ampere A1), not
-# x86_64. Playwright's default Chromium download and most generic Docker
-# base images assume x86_64 — on ARM they either fail to pull, or pull
-# and then fail to execute. This Dockerfile is written specifically to
-# avoid that, using Playwright's own ARM-aware install path rather than
-# assuming an architecture.
-#
-# If you deploy this SAME resolver on an x86_64 box later (a different
-# provider, or an x86 Oracle shape), this Dockerfile still works —
-# Playwright's `--with-deps` install detects the host architecture
-# automatically. This file does not need to change per-architecture,
-# only the base image tag below might, per the note next to it.
+# ARM NOTE (kept for reference, not the primary path anymore): this
+# Dockerfile also works unmodified on ARM hosts like Oracle Cloud's
+# Always Free Ampere VMs, because `playwright install --with-deps
+# chromium` below auto-detects the host CPU architecture and pulls the
+# matching Chromium build — nothing here is hardcoded to one architecture.
 
 FROM python:3.12-slim
 
@@ -43,4 +38,10 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# NOTE ON PORT: Render (and several other PaaS hosts) inject a $PORT
+# environment variable and expect the app to bind to it, not a fixed
+# port. Using shell form here (not exec-array form) so $PORT actually
+# gets substituted by the shell at container start. Defaults to 8000
+# via ${PORT:-8000} for local `docker run` / docker-compose use where
+# no PORT is set.
+CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
